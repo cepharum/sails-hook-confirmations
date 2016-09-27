@@ -26,6 +26,25 @@
  * @author: cepharum
  */
 
-export default {
+var actions = {};
 
+function forbidden( req, res ) {
+	"use strict";
+	res.forbidden();
 }
+
+[ "find", "findOne", "create", "update", "destroy", "add", "remove", "populate" ]
+	.forEach( n => {
+		"use strict";
+		actions[n] = forbidden;
+	} );
+
+
+actions.process = function( req, res ) {
+	"use strict";
+
+
+};
+
+
+export default actions;
