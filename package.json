@@ -1,0 +1,13 @@
+{
+  "name": "sails-hook-confirmations",
+  "version": "0.0.1",
+  "license": "MIT",
+  "repository": "https://github.com/cepharum/sails-hook-confirmations.git",
+  "sails": {
+    "isHook": true,
+    "hookName": "confirmations"
+  },
+  "dependencies": {
+    "marlinspike": "^1.0.0"
+  }
+}
