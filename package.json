@@ -1,17 +1,18 @@
 {
-	"name": "sails-hook-confirmations",
-	"version": "0.0.1",
-	"license": "MIT",
-	"repository": "https://github.com/cepharum/sails-hook-confirmations.git",
-	"sails": {
-		"isHook": true,
-		"hookName": "confirmations"
-	},
-	"main": "api/hooks/confirmations.js",
-	"dependencies": {
-		"marlinspike": "^1.0.0"
-	},
-	"devDependencies": {
-		"mocha": "^3.1.0"
-	}
+  "name": "sails-hook-confirmations",
+  "version": "0.0.1",
+  "license": "MIT",
+  "repository": "https://github.com/cepharum/sails-hook-confirmations.git",
+  "sails": {
+    "isHook": true,
+    "hookName": "confirmations"
+  },
+  "main": "api/hooks/confirmations.js",
+  "dependencies": {
+    "bluebird": "^3.4.6",
+    "marlinspike": "^1.0.0"
+  },
+  "devDependencies": {
+    "mocha": "^3.1.0"
+  }
 }
