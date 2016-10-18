@@ -26,8 +26,7 @@
  * @author: cepharum
  */
 
-import * as CRYPTO from "crypto";
-import * as PROMISE from "bluebird";
+var CRYPTO = require( "crypto" );
 
 
 var Confirmation = {
@@ -86,7 +85,7 @@ var Confirmation = {
 	 * @returns Promise<Buffer>
 	 */
 	getRandom: function() {
-		return new PROMISE( function( resolve, reject ) {
+		return new Promise( function( resolve, reject ) {
 			CRYPTO.randomBytes( 256, function( err, buf ) {
 				if ( err ) {
 					reject( err );
@@ -110,7 +109,7 @@ var Confirmation = {
 		"use strict";
 
 		if ( !sails.models || !sails.models[modelName] || typeof sails.models[modelName][methodName] !== "function" ) {
-			return PROMISE.reject( new TypeError( "invalid model or method" ) );
+			return Promise.reject( new TypeError( "invalid model or method" ) );
 		}
 
 		return Confirmation.createProcess( null, modelName + "." + methodName, argument, expires );
@@ -134,7 +133,7 @@ var Confirmation = {
 
 		var route = sails.getRouteFor( "ConfirmationController.process" );
 		if ( !route ) {
-			return PROMISE.reject( new Error( "missing route to controller for processing confirmation" ) );
+			return Promise.reject( new Error( "missing route to controller for processing confirmation" ) );
 		}
 
 		return tryRandom()
@@ -177,4 +176,4 @@ var Confirmation = {
 	}
 };
 
-export default Confirmation;
+module.exports = Confirmation;

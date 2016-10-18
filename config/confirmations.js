@@ -26,6 +26,8 @@
  * @author: cepharum
  */
 
-export const confirmations = {
-	name: "confirmations"
+module.exports = {
+	confirmations: {
+		name: "confirmations"
+	}
 };

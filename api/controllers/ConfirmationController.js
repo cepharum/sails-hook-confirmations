@@ -37,7 +37,7 @@ var actions = {};
 	} );
 
 
-// add cusotm action for processing confirmation
+// add custom action for processing confirmation
 actions.process = function( req, res ) {
 	"use strict";
 
@@ -133,7 +133,7 @@ actions.process = function( req, res ) {
 };
 
 
-export default actions;
+module.exports = actions;
 
 
 function findMethod( record ) {

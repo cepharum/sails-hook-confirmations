@@ -26,9 +26,13 @@
  * @author: cepharum
  */
 
-import Marlinspike from "marlinspike";
+var Marlinspike = require( "marlinspike" );
 
 class Confirmations extends Marlinspike {
+	constructor( sails ) {
+		super( sails, module );
+	}
+
 	defaults( overrides ) {
 
 	}
@@ -48,4 +52,4 @@ class Confirmations extends Marlinspike {
 	}
 }
 
-export default Marlinspike.createSailsHook( Confirmations );
+module.exports = Marlinspike.createSailsHook( Confirmations );
