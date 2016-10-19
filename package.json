@@ -9,7 +9,6 @@
   },
   "main": "api/hooks/confirmations.js",
   "dependencies": {
-    "bluebird": "^3.4.6",
     "marlinspike": "^1.0.0"
   },
   "devDependencies": {
