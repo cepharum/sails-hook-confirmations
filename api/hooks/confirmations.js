@@ -47,7 +47,9 @@ class Confirmations extends Marlinspike {
 
 	routes() {
 		return {
-			"get /confirmation/process/:id/:token": "ConfirmationController.process"
+			before: {
+				"GET /confirmation/process/:id/:token": "ConfirmationController.process"
+			}
 		};
 	}
 }
