@@ -29,7 +29,7 @@
 var CRYPTO = require( "crypto" );
 
 
-var Confirmation = {
+module.exports = {
 
 	attributes: {
 		key: {
@@ -40,8 +40,7 @@ var Confirmation = {
 			type: "string"
 		},
 		module: {
-			type: "string",
-			required: true
+			type: "string"
 		},
 		method: {
 			type: "string",
@@ -59,7 +58,7 @@ var Confirmation = {
 	},
 
 	/**
-	 * Creates salted SHA512 w/o embedding salt in hash.
+	 * Creates salted SHA256 w/o embedding salt in hash.
 	 *
 	 * Due to not injecting salt same salt must be provided again to repeat same
 	 * hashing e.g. for evaluation.
@@ -71,7 +70,7 @@ var Confirmation = {
 	getHash: function( data, salt ) {
 		"use strict";
 
-		var hash = CRYPTO.createHash( "sha512" );
+		var hash = CRYPTO.createHash( "sha256" );
 		hash.update( salt );
 		hash.update( data );
 
@@ -97,6 +96,67 @@ var Confirmation = {
 	},
 
 	/**
+	 * Fetches method selected by provided name of module and/or method.
+	 *
+	 * @param {?string} moduleName name of custom module to be `require`d for containing custom method, null for selecting a model's method
+	 * @param {string} methodName name of method in custom module, name of model and its method joined by period if moduleName is omitted
+	 * @returns {function}
+	 * @throws Error on invalid selection or missing selected method
+	 */
+	getMethod: function( moduleName, methodName ) {
+		"use strict";
+
+		if ( !methodName || typeof methodName !== "string" ) {
+			throw new Error( "invalid method name" );
+		}
+
+		if ( moduleName ) {
+			if ( typeof moduleName !== "string" ) {
+				throw new Error( "invalid module name" );
+			}
+
+			if ( methodName.indexOf( "." ) > -1 ) {
+				throw new Error( "unexpected model name prefixed to method name" );
+			}
+
+			let api = require( moduleName );
+			if ( !api || typeof api[methodName] !== "function" ) {
+				throw new Error( "invalid or missing custom method" );
+			}
+
+			return api[methodName];
+		}
+
+
+		let parts = methodName.split( "." );
+
+		if ( parts.length != 2 ) {
+			throw new Error( "missing combination of model and method name" );
+		}
+
+		let [ modelName, modelMethod ] = parts;
+
+		if ( !sails || !sails.models || !sails.models[modelName] || typeof sails.models[modelName][modelMethod] != "function" ) {
+			throw new Error( "invalid or missing model method" );
+		}
+
+		return sails.models[modelName][modelMethod];
+	},
+
+	/**
+	 * Wraps result of Confirmation#getMethod() in a promise.
+	 *
+	 * @param {?string} moduleName name of custom module to be `require`d for containing custom method, null for selecting a model's method
+	 * @param {string} methodName name of method in custom module, name of model and its method joined by period if moduleName is omitted
+	 * @returns {Promise<function>}
+	 */
+	getPromisedMethod: function( moduleName, methodName ) {
+		"use strict";
+
+		return new Promise( resolve => resolve( this.getMethod( moduleName, methodName ) ) );
+	},
+
+	/**
 	 * Creates confirmation process calling selected method of given model.
 	 *
 	 * @param {string} modelName name of model
@@ -108,11 +168,7 @@ var Confirmation = {
 	createProcessOnModel: function( modelName, methodName, argument, expires ) {
 		"use strict";
 
-		if ( !sails.models || !sails.models[modelName] || typeof sails.models[modelName][methodName] !== "function" ) {
-			return Promise.reject( new TypeError( "invalid model or method" ) );
-		}
-
-		return Confirmation.createProcess( null, modelName + "." + methodName, argument, expires );
+		return sails.models.confirmation.createProcess( null, modelName + "." + methodName, argument, expires );
 	},
 
 	/**
@@ -122,7 +178,7 @@ var Confirmation = {
 	 *       you might omit `moduleName` but need to provide qualified name in
 	 *       `methodName` then.
 	 *
-	 * @param {?string} moduleName name of module (to be passed into `require`)
+	 * @param {?string} moduleName name of module (to be `require`d)
 	 * @param {string} methodName name of method to invoke
 	 * @param {string} argument custom argument passed into method
 	 * @param {?Date=} expires marks time when confirmation is expiring
@@ -131,38 +187,39 @@ var Confirmation = {
 	createProcess: function( moduleName, methodName, argument, expires ) {
 		"use strict";
 
-		var route = sails.getRouteFor( "ConfirmationController.process" );
-		if ( !route ) {
-			return Promise.reject( new Error( "missing route to controller for processing confirmation" ) );
-		}
+		var Model = sails.models.confirmation;
 
-		return tryRandom()
+		return Model.getPromisedMethod( moduleName, methodName )
+			.then( function() {
+				return tryRandom();
+			} )
 			.then( function( newKey ) {
-				var newToken = this.getRandom();
+				return Model.getRandom()
+					.then( function( newToken ) {
+						newToken = newToken.toString( "hex" );
 
-				return Confirmation.create( {
-					key: newKey,
-					token: newToken,
-					module: moduleName || null,
-					method: methodName || null,
-					argument: String( argument || "" ),
-					expires: expires || null,
-					confirmed: null
-				} )
-					.then( function() {
-						return route.url
-							.replace( /:id/g, newKey )
-							.replace( /:token/g, newToken );
+						return Model.create( {
+							key: newKey,
+							token: newToken,
+							module: moduleName || undefined,
+							method: methodName || undefined,
+							argument: String( argument || "" ),
+							expires: expires || undefined,
+							confirmed: undefined
+						} )
+							.then( function() {
+								return "/confirmation/process/" + newKey + "/" + Model.getHash( newToken, newKey );
+							} );
 					} );
 			} );
 
 
 		function tryRandom() {
-			return Confirmation.getRandom()
+			return Model.getRandom()
 				.then( function( random ) {
-					var hash = Confirmation.getHash( random, "KEY:" ).substr( 0, 16 );
+					var hash = Model.getHash( random, "KEY:" ).substr( 0, 16 );
 
-					return Confirmation.findOne( { key: hash } )
+					return Model.findOne( { key: hash } )
 						.then( function( found ) {
 							if ( found ) {
 								// FIXME Working recursively is loading stack. Use object stream instead!
@@ -176,4 +233,3 @@ var Confirmation = {
 	}
 };
 
-module.exports = Confirmation;

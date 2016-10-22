@@ -48,7 +48,9 @@ actions.process = function( req, res ) {
 		return res.badRequest();
 	}
 
-	sails.models.Confirmation.findOne( {
+	let Model = sails.models.confirmation;
+
+	Model.findOne( {
 		key: id
 	} )
 		.then( function( record ) {
@@ -74,7 +76,7 @@ actions.process = function( req, res ) {
 			}
 
 			// hash stored token to compare with token hash provided by client
-			hash = getHash( record.token, record.key );
+			hash = Model.getHash( record.token, record.key );
 			if ( hash !== token ) {
 				// mismatch
 				return triggerProcess( { invalidHash: true }, method, argument );

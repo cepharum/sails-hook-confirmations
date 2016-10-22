@@ -27,7 +27,8 @@
  */
 
 var SAILS = require( "sails" ).Sails;
-var EXPECT = require( "expect.js" );
+var SHOULD = require( "should" );
+var PATH = require( "path" );
 
 describe( "confirmations hook", function() {
 
@@ -73,22 +74,23 @@ describe( "confirmations hook", function() {
 	it( "injects model", function() {
 		"use strict";
 
-		EXPECT( sails.models ).to.be.ok();
-		EXPECT( sails.models.confirmation ).to.be.ok();
+		SHOULD( sails.models ).be.ok();
+		SHOULD( sails.models.confirmation ).be.ok();
 
-		EXPECT( sails.models.confirmation.getHash ).to.be.a( "function" );
-		EXPECT( sails.models.confirmation.getRandom ).to.be.a( "function" );
-		EXPECT( sails.models.confirmation.createProcessOnModel ).to.be.a( "function" );
-		EXPECT( sails.models.confirmation.createProcess ).to.be.a( "function" );
+		SHOULD( sails.models.confirmation.getHash ).be.Function();
+		SHOULD( sails.models.confirmation.getRandom ).be.Function();
+		SHOULD( sails.models.confirmation.getMethod ).be.Function();
+		SHOULD( sails.models.confirmation.createProcessOnModel ).be.Function();
+		SHOULD( sails.models.confirmation.createProcess ).be.Function();
 	} );
 
 	it( "injects controller", function() {
 		"use strict";
 
-		EXPECT( sails.controllers ).to.be.ok();
-		EXPECT( sails.controllers.confirmation ).to.be.ok();
+		SHOULD( sails.controllers ).be.ok();
+		SHOULD( sails.controllers.confirmation ).be.ok();
 
-		EXPECT( sails.controllers.confirmation.process ).to.be.a( "function" );
+		SHOULD( sails.controllers.confirmation.process ).be.Function();
 	} );
 
 	it( "generates hash", function() {
@@ -105,27 +107,27 @@ describe( "confirmations hook", function() {
 		    hashBB  = sails.models.confirmation.getHash( cleartextB, saltB ),
 			hashAA2 = sails.models.confirmation.getHash( cleartextA, saltA );
 
-		EXPECT( hashAA ).to.be.a( "string" );
-		EXPECT( hashAA ).to.have.length( 128 );
-		EXPECT( hashAB ).to.be.a( "string" );
-		EXPECT( hashAB ).to.have.length( 128 );
-		EXPECT( hashBA ).to.be.a( "string" );
-		EXPECT( hashBA ).to.have.length( 128 );
-		EXPECT( hashBB ).to.be.a( "string" );
-		EXPECT( hashBB ).to.have.length( 128 );
-		EXPECT( hashAA2 ).to.be.a( "string" );
-		EXPECT( hashAA2 ).to.have.length( 128 );
+		SHOULD( hashAA ).be.String();
+		SHOULD( hashAA ).have.length( 64 );
+		SHOULD( hashAB ).be.String();
+		SHOULD( hashAB ).have.length( 64 );
+		SHOULD( hashBA ).be.String();
+		SHOULD( hashBA ).have.length( 64 );
+		SHOULD( hashBB ).be.String();
+		SHOULD( hashBB ).have.length( 64 );
+		SHOULD( hashAA2 ).be.String();
+		SHOULD( hashAA2 ).have.length( 64 );
 
-		EXPECT( hashAA ).not.to.equal( hashAB );
-		EXPECT( hashAA ).not.to.equal( hashBA );
-		EXPECT( hashAA ).not.to.equal( hashBB );
+		SHOULD( hashAA ).not.equal( hashAB );
+		SHOULD( hashAA ).not.equal( hashBA );
+		SHOULD( hashAA ).not.equal( hashBB );
 
-		EXPECT( hashAB ).not.to.equal( hashBA );
-		EXPECT( hashAB ).not.to.equal( hashBB );
+		SHOULD( hashAB ).not.equal( hashBA );
+		SHOULD( hashAB ).not.equal( hashBB );
 
-		EXPECT( hashBA ).not.to.equal( hashBB );
+		SHOULD( hashBA ).not.equal( hashBB );
 
-		EXPECT( hashAA2 ).to.equal( hashAA );
+		SHOULD( hashAA2 ).equal( hashAA );
 	} );
 
 	it( "generates random data", function( done ) {
@@ -133,26 +135,112 @@ describe( "confirmations hook", function() {
 
 		var random = sails.models.confirmation.getRandom();
 
-		EXPECT( random ).to.be.a( Promise );
+		SHOULD( random ).be.Promise();
 
 		random
 			.then( function( data ) {
-				EXPECT( data ).to.be.ok();
-				EXPECT( data ).to.be.a( Buffer );
-				EXPECT( data ).to.have.length( 256 );
+				SHOULD( data ).be.ok();
+				SHOULD( data ).be.instanceof( Buffer );
+				SHOULD( data ).have.length( 256 );
 
 				sails.models.confirmation.getRandom()
 					.then( function( second ) {
-						EXPECT( second ).to.be.ok();
-						EXPECT( second ).to.be.a( Buffer );
-						EXPECT( second ).to.have.length( 256 );
+						SHOULD( second ).be.ok();
+						SHOULD( second ).be.instanceof( Buffer );
+						SHOULD( second ).have.length( 256 );
 
-						EXPECT( data.toString( "hex" ) ).not.to.equal( second.toString( "hex" ) );
+						SHOULD( data.toString( "hex" ) ).not.equal( second.toString( "hex" ) );
 					} );
 
 				done();
 			} )
 			.catch( done );
+	} );
+
+	it( "fetches custom method", function() {
+		"use strict";
+
+		var module = PATH.join( __dirname, ".injector" );
+
+		SHOULD( sails.models.confirmation.getMethod ).throw();
+		SHOULD( sails.models.confirmation.getMethod.bind( this, module ) ).throw();
+		SHOULD( sails.models.confirmation.getMethod.bind( this, null, "invoke" ) ).throw();
+		SHOULD( sails.models.confirmation.getMethod.bind( this, module, "invoke" ) ).not.throw();
+		SHOULD( sails.models.confirmation.getMethod.bind( this, null, "confirmation.getHash" ) ).not.throw();
+		SHOULD( sails.models.confirmation.getMethod.bind( this, module, "confirmation.getHash" ) ).throw();
+	} );
+
+	it( "requires valid method selector on creating custom process to be confirmed", function() {
+		"use strict";
+
+		var module = PATH.join( __dirname, ".injector" );
+
+		return Promise.all( [
+			SHOULD( sails.models.confirmation.createProcess() ).be.rejected(),
+			SHOULD( sails.models.confirmation.createProcess( module ) ).be.rejected(),
+			SHOULD( sails.models.confirmation.createProcess( null, "invoke" ) ).be.rejected(),
+			SHOULD( sails.models.confirmation.createProcess( module, "invoke" ) ).be.fulfilled(),
+			SHOULD( sails.models.confirmation.createProcess( null, "confirmation.getHash" ) ).be.fulfilled(),
+			SHOULD( sails.models.confirmation.createProcess( module, "confirmation.getHash" ) ).be.rejected(),
+		] );
+	} );
+
+	it( "requires valid method selector on creating model process to be confirmed", function() {
+		"use strict";
+
+		return Promise.all( [
+			SHOULD( sails.models.confirmation.createProcessOnModel() ).be.rejected(),
+			SHOULD( sails.models.confirmation.createProcessOnModel( "model" ) ).be.rejected(),
+			SHOULD( sails.models.confirmation.createProcessOnModel( "model", "method" ) ).be.rejected(),
+			SHOULD( sails.models.confirmation.createProcessOnModel( "model", "model.method" ) ).be.rejected(),
+			SHOULD( sails.models.confirmation.createProcessOnModel( null, "model.method" ) ).be.rejected(),
+
+			SHOULD( sails.models.confirmation.createProcessOnModel( "confirmation" ) ).be.rejected(),
+			SHOULD( sails.models.confirmation.createProcessOnModel( "confirmation", "method" ) ).be.rejected(),
+			SHOULD( sails.models.confirmation.createProcessOnModel( "confirmation", "confirmation.method" ) ).be.rejected(),
+			SHOULD( sails.models.confirmation.createProcessOnModel( null, "confirmation.method" ) ).be.rejected(),
+
+			SHOULD( sails.models.confirmation.createProcessOnModel( "confirmation", "getHash" ) ).be.fulfilled(),
+			SHOULD( sails.models.confirmation.createProcessOnModel( "confirmation", "confirmation.getHash" ) ).be.rejected(),
+			SHOULD( sails.models.confirmation.createProcessOnModel( null, "confirmation.getHash" ) ).be.rejected()
+		] );
+	} );
+
+	it( "creates custom process to be confirmed", function() {
+		"use strict";
+
+		var result = sails.models.confirmation.createProcess( PATH.join( __dirname, ".injector" ), "invoke" );
+
+		SHOULD( result ).be.Promise();
+
+		return result
+			.then( function( url ) {
+				SHOULD( url ).be.ok();
+				SHOULD( url ).be.String();
+				SHOULD( url ).match( /^\/confirmation\/process\/[^\/]{16}\/[^\/]{64}$/ );
+			} );
+	} );
+
+	it( "properly invokes custom process on confirmation", function() {
+		"use strict";
+
+		var result = 0,
+		    action = function( value ) { result = value; },
+		    module = PATH.join( __dirname, ".injector" ),
+			url;
+
+		require( module ).setTarget( action );
+
+		return sails.models.confirmation.createProcess( module, "invoke", 5 )
+			.then( function( url ) {
+				sails.request( url, function( res ) {
+					SHOULD( arguments.length ).equal( 1 );
+					SHOULD( res ).be.ok();
+					SHOULD( res.statusCode ).equal( 200 );
+
+					SHOULD( result ).equal( "5" );
+				} )
+			} );
 	} );
 
 } );

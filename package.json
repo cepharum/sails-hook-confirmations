@@ -9,7 +9,8 @@
   },
   "main": "api/hooks/confirmations.js",
   "dependencies": {
-    "marlinspike": "^1.0.0"
+    "marlinspike": "^1.0.0",
+    "should": "^11.1.1"
   },
   "devDependencies": {
     "expect.js": "^0.3.1",
