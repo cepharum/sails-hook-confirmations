@@ -162,13 +162,13 @@ module.exports = {
 	 * @param {string} modelName name of model
 	 * @param {string} methodName name of selected model's method to invoke
 	 * @param {string} argument custom argument passed into method
-	 * @param {?Date=} expires marks time when confirmation is expiring
+	 * @param {int=} maxAge maximum age of confirmation to be accepted, omit for accepting forever
 	 * @returns {Promise<string>} URL of endpoint actually confirming process
 	 */
-	createProcessOnModel: function( modelName, methodName, argument, expires ) {
+	createProcessOnModel: function( modelName, methodName, argument, maxAge ) {
 		"use strict";
 
-		return sails.models.confirmation.createProcess( null, modelName + "." + methodName, argument, expires );
+		return sails.models.confirmation.createProcess( null, modelName + "." + methodName, argument, maxAge );
 	},
 
 	/**
@@ -181,10 +181,10 @@ module.exports = {
 	 * @param {?string} moduleName name of module (to be `require`d)
 	 * @param {string} methodName name of method to invoke
 	 * @param {string} argument custom argument passed into method
-	 * @param {?Date=} expires marks time when confirmation is expiring
+	 * @param {int=} maxAge maximum age of confirmation to be accepted, omit for accepting forever
 	 * @returns {Promise<string>} URL of endpoint actually confirming process
 	 */
-	createProcess: function( moduleName, methodName, argument, expires ) {
+	createProcess: function( moduleName, methodName, argument, maxAge ) {
 		"use strict";
 
 		var Model = sails.models.confirmation;
@@ -198,13 +198,19 @@ module.exports = {
 					.then( function( newToken ) {
 						newToken = newToken.toString( "hex" );
 
+						let expiration = undefined;
+
+						if ( maxAge > 0 ) {
+							expiration = new Date( Date.now() + maxAge * 1000 );
+						}
+
 						return Model.create( {
 							key: newKey,
 							token: newToken,
 							module: moduleName || undefined,
 							method: methodName || undefined,
 							argument: String( argument || "" ),
-							expires: expires || undefined,
+							expires: expiration,
 							confirmed: undefined
 						} )
 							.then( function() {

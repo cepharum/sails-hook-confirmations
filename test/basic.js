@@ -31,6 +31,7 @@ var SHOULD = require( "should" );
 var PATH = require( "path" );
 
 describe( "confirmations hook", function() {
+	this.timeout( 5000 );
 
 	var sails;
 
@@ -105,7 +106,7 @@ describe( "confirmations hook", function() {
 		    hashAB  = sails.models.confirmation.getHash( cleartextA, saltB ),
 		    hashBA  = sails.models.confirmation.getHash( cleartextB, saltA ),
 		    hashBB  = sails.models.confirmation.getHash( cleartextB, saltB ),
-			hashAA2 = sails.models.confirmation.getHash( cleartextA, saltA );
+		    hashAA2 = sails.models.confirmation.getHash( cleartextA, saltA );
 
 		SHOULD( hashAA ).be.String();
 		SHOULD( hashAA ).have.length( 64 );
@@ -221,26 +222,82 @@ describe( "confirmations hook", function() {
 			} );
 	} );
 
-	it( "properly invokes custom process on confirmation", function() {
+	it( "properly invokes custom process on requesting URL provided on creating process confirmation", function() {
 		"use strict";
 
-		var result = 0,
-		    action = function( value ) { result = value; },
-		    module = PATH.join( __dirname, ".injector" ),
-			url;
+		return tryRequest( 0, 0, function( url, res, actual, expected ) {
+			SHOULD( res ).be.ok();
+			SHOULD( res.statusCode ).equal( 200 );
+
+			SHOULD( actual ).equal( expected );
+		} );
+	} );
+
+	it( "properly invokes custom process on requesting provided URL within expiration time", function() {
+		"use strict";
+
+		return tryRequest( 2, 1, function( url, res, actual, expected ) {
+			SHOULD( res ).be.ok();
+			SHOULD( res.statusCode ).equal( 200 );
+
+			SHOULD( actual ).equal( expected );
+		} );
+	} );
+
+	it( "properly rejects invocation of custom process on requesting URL provided on creating process confirmation after expiration", function() {
+		"use strict";
+
+		return tryRequest( 2, 4, function( url, res, actual, expected ) {
+			SHOULD( res ).be.ok();
+			SHOULD( res.statusCode ).not.equal( 200 );
+
+			SHOULD( actual ).not.equal( expected );
+		} );
+	} );
+
+
+	function tryRequest( expiresInSeconds, requestDelayInSeconds, testFn ) {
+		"use strict";
+
+		var marker = 0,
+		    value  = "5",
+		    action = function( req, res, err, value ) {
+				if ( err ) {
+					return res.status( 500 ).end();
+				} else {
+					marker = value;
+				}
+		    },
+		    module = PATH.join( __dirname, ".injector" );
 
 		require( module ).setTarget( action );
 
-		return sails.models.confirmation.createProcess( module, "invoke", 5 )
-			.then( function( url ) {
-				sails.request( url, function( res ) {
-					SHOULD( arguments.length ).equal( 1 );
-					SHOULD( res ).be.ok();
-					SHOULD( res.statusCode ).equal( 200 );
+		return new Promise( function( resolve, reject ) {
+			sails.models.confirmation.createProcess( module, "invoke", value, expiresInSeconds )
+				.then( function( url ) {
+					if ( requestDelayInSeconds > 0 ) {
+						setTimeout( request, requestDelayInSeconds * 1000 );
+					} else {
+						request();
+					}
 
-					SHOULD( result ).equal( "5" );
+					function request() {
+						require( "http" ).get( {
+							hostname: sails.config.explicitHost || "127.0.0.1",
+							port:     sails.config.port || 1337,
+							path:     url,
+							agent:    false
+						}, function( res ) {
+							try {
+								testFn( url, res, marker, value );
+								resolve();
+							} catch ( e ) {
+								reject( e );
+							}
+						} );
+					}
 				} )
-			} );
-	} );
-
+				.catch( reject );
+		} );
+	}
 } );

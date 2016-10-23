@@ -48,7 +48,7 @@ actions.process = function( req, res ) {
 		return res.badRequest();
 	}
 
-	let Model = sails.models.confirmation;
+	var Model = sails.models.confirmation;
 
 	Model.findOne( {
 		key: id
@@ -82,7 +82,7 @@ actions.process = function( req, res ) {
 				return triggerProcess( { invalidHash: true }, method, argument );
 			}
 
-			if ( record.expires < Date.now() ) {
+			if ( record.expires && record.expires.getTime() < Date.now() ) {
 				// match, but expired
 				return triggerProcess( { expired: true }, method, argument );
 			}
@@ -91,7 +91,7 @@ actions.process = function( req, res ) {
 			// match
 
 			// drop stored token to mark this confirmation having succeeded
-			record.confirmed = Date.now();
+			record.confirmed = new Date();
 			record.token     = null;
 
 			record.save()
@@ -124,7 +124,8 @@ actions.process = function( req, res ) {
 		"use strict";
 
 		try {
-			method( req, res, error, argument )
+			method( req, res, error, argument );
+			res.end();
 		} catch ( e ) {
 			sails.log.error( "processing valid confirmation failed" );
 			sails.log.error( e );
