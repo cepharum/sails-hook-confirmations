@@ -255,6 +255,25 @@ describe( "confirmations hook", function() {
 		} );
 	} );
 
+	it( "provides different URLs for confirming saming process multiple times", function() {
+		"use strict";
+
+		var module = PATH.join( __dirname, ".injector" );
+
+		return Promise.all( [
+			sails.models.confirmation.createProcess( module, "invoke", "1" ),
+			sails.models.confirmation.createProcess( module, "invoke", "1" ),
+			sails.models.confirmation.createProcess( module, "invoke", "1" )
+		] )
+			.then( function( urls ) {
+				SHOULD( urls ).be.Array();
+				SHOULD( urls ).have.length( 3 );
+				SHOULD( urls[0] ).not.equal( urls[1] );
+				SHOULD( urls[0] ).not.equal( urls[2] );
+				SHOULD( urls[1] ).not.equal( urls[2] );
+			} );
+	} );
+
 
 	function tryRequest( expiresInSeconds, requestDelayInSeconds, testFn ) {
 		"use strict";
